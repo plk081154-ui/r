@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบข้อมูลครูโรงเรียนกุศลวิทยา</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Sarabun -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .spinner { border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; width: 16px; height: 16px; animation: spin 0.7s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <header class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white text-blue-800 p-2 rounded-xl font-bold text-xl shadow">กว</div>
+                <div>
+                    <h1 class="text-xl font-bold">โรงเรียนกุศลวิทยา</h1>
+                    <p class="text-xs text-blue-200">ระบบจัดการข้อมูลและโปรไฟล์ครู</p>
+                </div>
+            </div>
+            <div id="nav-actions" class="flex items-center space-x-2">
+                <button onclick="openPublicDirectoryModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow transition flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span>ทำเนียบครู</span>
+                </button>
+                <button onclick="openAdminLoginModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow transition flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <span>แอดมิน</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
+
+        <!-- Global loading overlay -->
+        <div id="global-loading" class="fixed inset-0 bg-white/70 hidden items-center justify-center z-[60]">
+            <div class="bg-white px-6 py-4 rounded-2xl shadow-xl flex items-center space-x-3">
+                <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm font-medium text-slate-600">กำลังโหลดข้อมูล...</span>
+            </div>
+        </div>
+
+        <!-- Custom Alert Modal -->
+        <div id="custom-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-900 mb-2">แจ้งเตือน</h3>
+                <p id="modal-message" class="text-slate-600 mb-6">ข้อความแจ้งเตือน...</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="modal-cancel-btn" class="hidden px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition">ยกเลิก</button>
+                    <button id="modal-ok-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition shadow-lg shadow-blue-600/30">ตกลง</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Direct Login Modal -->
+        <div id="admin-login-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">เข้าสู่ระบบผู้ดูแลระบบ</h3>
+                    <button onclick="closeAdminLoginModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+                </div>
+                <form onsubmit="handleAdminDirectLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">รหัสผ่านแอดมิน</label>
+                        <input type="password" id="admin-pin-input" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-500 text-sm" placeholder="กรอกรหัสผ่านแอดมิน">
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" onclick="closeAdminLoginModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-sm font-medium transition">ยกเลิก</button>
+                        <button type="submit" id="admin-login-submit-btn" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-amber-500/30 transition">เข้าสู่ระบบ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Public Directory Modal (Shared Data) -->
+        <div id="public-directory-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-3xl w-full p-6 md:p-8 shadow-2xl my-8">
+                <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                    <div>
+                        <span class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold tracking-wide uppercase">ระบบข้อมูลสาธารณะ</span>
+                        <h3 class="text-xl font-bold text-slate-900 mt-1">ทำเนียบรายชื่อและวิชาสอนคุณครูโรงเรียนกุศลวิทยา</h3>
+                    </div>
+                    <button onclick="closePublicDirectoryModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+                </div>
+                <p class="text-sm text-slate-500 mb-4">ข้อมูลส่วนนี้ถูกแชร์อย่างปลอดภัย (ชื่อ, ตำแหน่ง, และวิชาสอน) สำหรับระบบอื่นหรือผู้ปกครอง/นักเรียนเรียกใช้งานได้โดยไม่เปิดเผยข้อมูลส่วนตัว</p>
+
+                <div class="mb-4 flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <span class="text-xs font-semibold text-slate-600">ตัวอย่างข้อมูลสาธารณะในรูปแบบ JSON</span>
+                    <button onclick="copyApiEndpointCode()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">คัดลอกข้อมูล JSON</button>
+                </div>
+
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
+                                <th class="p-3 rounded-l-xl">ชื่อ - นามสกุล</th>
+                                <th class="p-3">ตำแหน่ง</th>
+                                <th class="p-3">วิชาที่สอน</th>
+                                <th class="p-3 rounded-r-xl">สถานที่สอน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="public-directory-tbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end pt-4 border-t border-slate-100 mt-4">
+                    <button onclick="closePublicDirectoryModal()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition text-sm">ปิดหน้าต่าง</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 1: AUTHENTICATION (Login / Register) -->
+        <section id="auth-view" class="max-w-md mx-auto bg-white rounded-3xl shadow-xl border border-slate-100 p-8 my-8">
+            <div class="text-center mb-6">
+                <h2 id="auth-title" class="text-2xl font-bold text-slate-900">เข้าสู่ระบบครู</h2>
+                <p id="auth-subtitle" class="text-sm text-slate-500 mt-1">กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งาน</p>
+            </div>
+
+            <!-- Tabs for Login / Register -->
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
+                <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-white text-blue-600 shadow-sm transition">เข้าสู่ระบบ</button>
+                <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-800 transition">สมัครสมาชิก</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ชื่อผู้ใช้ (Username)</label>
+                    <input type="text" id="login-username" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white transition text-sm" placeholder="เช่น teacher_somchai">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">รหัสผ่าน (Password)</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white transition text-sm" placeholder="รหัสผ่านของคุณ">
+                </div>
+                <button type="submit" id="login-submit-btn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition">เข้าสู่ระบบ</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ตั้งชื่อผู้ใช้ (Username)</label>
+                    <input type="text" id="reg-username" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white transition text-sm" placeholder="ภาษาอังกฤษหรือตัวเลขเท่านั้น เช่น teacher_anong">
+                    <p class="text-xs text-slate-400 mt-1">ใช้ตัวอักษร a-z, ตัวเลข 0-9 และ _ เท่านั้น (3-20 ตัวอักษร)</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ตั้งรหัสผ่าน (Password)</label>
+                    <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white transition text-sm" placeholder="อย่างน้อย 6 ตัวอักษร">
+                </div>
+                <button type="submit" id="register-submit-btn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition">สมัครสมาชิก</button>
+            </form>
+        </section>
+
+        <!-- VIEW 2: TEACHER PROFILE DASHBOARD -->
+        <section id="teacher-view" class="hidden space-y-6">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8">
+                <!-- Back & Header Actions -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                    <button onclick="logout()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                        <span>ย้อนกลับ / ออกจากระบบ</span>
+                    </button>
+                    <button onclick="saveTeacherProfile()" id="save-profile-btn" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center space-x-2 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>บันทึกข้อมูลทั้งหมด</span>
+                    </button>
+                </div>
+
+                <div class="pb-6 border-b border-slate-100">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold tracking-wide uppercase">โปรไฟล์ครูส่วนตัว</span>
+                    <h2 class="text-2xl font-bold text-slate-900 mt-1" id="greeting-name">ยินดีต้อนรับ คุณครู</h2>
+                    <p class="text-sm text-slate-500">ข้อมูลส่วนตัวและประวัติการสอนของคุณ (ข้อมูลนี้ปลอดภัยและเห็นเฉพาะคุณและแอดมินเท่านั้น)</p>
+                </div>
+
+                <!-- Form Inputs -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
+                    <!-- Column 1: Picture & Basic Info -->
+                    <div class="space-y-4">
+                        <div class="flex flex-col items-center">
+                            <div class="relative w-36 h-36 rounded-full overflow-hidden border-4 border-slate-100 shadow-inner bg-slate-200 mb-3">
+                                <img id="profile-preview" src="https://placehold.co/200x200/e2e8f0/64748b?text=Teacher" alt="Teacher Photo" class="w-full h-full object-cover">
+                            </div>
+                            <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm">
+                                เลือกรูปภาพประจำตัว
+                                <input type="file" id="teacher-photo-input" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+                            </label>
+                            <p class="text-xs text-slate-400 mt-1">แนะนำรูปหน้าตรงชัดเจน (ไม่เกิน 2MB)</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ชื่อ - นามสกุล</label>
+                            <input type="text" id="t-fullname" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="เช่น ดร. สมชาย ใจดี">
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">อายุ (ปี)</label>
+                                <input type="number" id="t-age" min="18" max="100" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="35">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ส่วนสูง (ซม.)</label>
+                                <input type="number" id="t-height" min="0" max="250" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="170">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">น้ำหนัก (กก.)</label>
+                                <input type="number" id="t-weight" min="0" max="300" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="65">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Education & Teaching Info -->
+                    <div class="space-y-4 md:col-span-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สถานที่เคยจบการศึกษา (วุฒิ/สถาบัน)</label>
+                                <textarea id="t-education" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="เช่น ป.โท ครุศาสตรมหาบัณฑิต จุฬาลงกรณ์มหาวิทยาลัย"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สถานที่สอนปัจจุบัน</label>
+                                <textarea id="t-school" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="โรงเรียนกุศลวิทยา แผนกมัธยมศึกษา"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ตำแหน่งปัจจุบัน</label>
+                                <input type="text" id="t-position" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="เช่น ครูชำนาญการ / หัวหน้ากลุ่มสาระ">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สอนวิชาอะไรบ้าง</label>
+                                <input type="text" id="t-subjects" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:bg-white text-sm" placeholder="เช่น คณิตศาสตร์ ม.1, ม.3">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: ADMIN DASHBOARD -->
+        <section id="admin-view" class="hidden space-y-6">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8">
+                <!-- Back & Header Actions -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                    <button onclick="logout()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                        <span>ย้อนกลับ / ออกจากระบบ</span>
+                    </button>
+                    <div class="bg-slate-100 px-4 py-2 rounded-xl text-sm font-medium text-slate-600">
+                        จำนวนครูทั้งหมด: <span id="admin-teacher-count" class="font-bold text-blue-600">0</span> ท่าน
+                    </div>
+                </div>
+
+                <div class="pb-6 border-b border-slate-100">
+                    <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold tracking-wide uppercase">ผู้ดูแลระบบ</span>
+                    <h2 class="text-2xl font-bold text-slate-900 mt-1">รายชื่อครูทั้งหมดในระบบโรงเรียนกุศลวิทยา</h2>
+                    <p class="text-sm text-slate-500">แอดมินสามารถตรวจสอบข้อมูล แก้ไข หรือลบข้อมูลของครูแต่ละท่านได้</p>
+                </div>
+
+                <div class="mt-6 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
+                                <th class="p-3.5 rounded-l-xl">รูป / ชื่อ-นามสกุล</th>
+                                <th class="p-3.5">ตำแหน่ง / วิชาสอน</th>
+                                <th class="p-3.5">สถานที่สอนปัจจุบัน</th>
+                                <th class="p-3.5">สถาบันที่จบ</th>
+                                <th class="p-3.5 text-right rounded-r-xl">จัดการข้อมูล</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-teachers-list" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ADMIN EDIT MODAL FOR A SPECIFIC TEACHER -->
+            <div id="admin-edit-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 overflow-y-auto">
+                <div class="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl my-8">
+                    <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-6">
+                        <h3 class="text-lg font-bold text-slate-900">แอดมินแก้ไขข้อมูลครู: <span id="edit-modal-username" class="text-blue-600"></span></h3>
+                        <button onclick="closeAdminEditModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-2">&times;</button>
+                    </div>
+
+                    <input type="hidden" id="edit-target-username">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ชื่อ - นามสกุล</label>
+                                <input type="text" id="adm-fullname" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">อายุ</label>
+                                    <input type="number" id="adm-age" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สูง</label>
+                                    <input type="number" id="adm-height" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">น้ำหนัก</label>
+                                    <input type="number" id="adm-weight" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สถานที่เคยจบการศึกษา</label>
+                                <textarea id="adm-education" rows="2" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สถานที่สอนปัจจุบัน</label>
+                                <textarea id="adm-school" rows="2" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">ตำแหน่ง</label>
+                                <input type="text" id="adm-position" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">สอนวิชาอะไร</label>
+                                <input type="text" id="adm-subjects" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                            <button onclick="closeAdminEditModal()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition">ยกเลิก</button>
+                            <button onclick="saveAdminEditedProfile()" id="admin-save-edit-btn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition">บันทึกการแก้ไข</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 mt-12 text-center text-xs text-slate-500">
+        <p>&copy; 2026 โรงเรียนกุศลวิทยา - ระบบข้อมูลบุคลากรครูและผู้บริหาร</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+        let isAdmin = false;
+
+        const ACCOUNTS_KEY = 'kusol_accounts';
+        const PROFILES_KEY = 'kusol_profiles';
+
+        // ---------- Storage helpers (plain localStorage - works in any browser, no external dependency) ----------
+        async function storageGetJSON(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (e) {
+                console.error('Storage read error:', e);
+                return fallback;
+            }
+        }
+
+        async function storageSetJSON(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                console.error('Storage write error:', e);
+                return false;
+            }
+        }
+
+        function showGlobalLoading(show) {
+            const el = document.getElementById('global-loading');
+            el.classList.toggle('hidden', !show);
+            el.classList.toggle('flex', show);
+        }
+
+        function setButtonLoading(btn, loading, loadingText, normalText) {
+            if (!btn) return;
+            btn.disabled = loading;
+            btn.innerHTML = loading ? `<span class="spinner"></span> <span class="ml-2">${escapeHtml(loadingText)}</span>` : escapeHtml(normalText);
+        }
+
+        // ---------- XSS-safe HTML escaping ----------
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Custom Modal helper
+        function showAlert(title, message, callback) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            cancelBtn.classList.add('hidden');
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const okBtn = document.getElementById('modal-ok-btn');
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+            newOkBtn.addEventListener('click', () => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                if (callback) callback();
+            });
+        }
+
+        function showConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            cancelBtn.classList.remove('hidden');
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const okBtn = document.getElementById('modal-ok-btn');
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            newOkBtn.addEventListener('click', () => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                if (onConfirm) onConfirm();
+            });
+
+            newCancelBtn.addEventListener('click', () => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            });
+        }
+
+        // Initialize default database records if empty
+        async function initDB() {
+            showGlobalLoading(true);
+            try {
+                let accounts = await storageGetJSON(ACCOUNTS_KEY, null);
+                if (!accounts) {
+                    accounts = {
+                        "admin": "123456",
+                        "teacher_somchai": "123456"
+                    };
+                    await storageSetJSON(ACCOUNTS_KEY, accounts);
+                }
+
+                let profiles = await storageGetJSON(PROFILES_KEY, null);
+                if (!profiles) {
+                    profiles = {
+                        "teacher_somchai": {
+                            fullname: "นายสมชาย ใจดี",
+                            age: 38,
+                            height: 175,
+                            weight: 70,
+                            education: "ปริญญาโท ครุศาสตรมหาบัณฑิต (ค.ม.) จุฬาลงกรณ์มหาวิทยาลัย",
+                            school: "โรงเรียนกุศลวิทยา แผนกมัธยม",
+                            position: "ครูชำนาญการ",
+                            subjects: "คณิตศาสตร์ ม.4-6",
+                            photo: "https://placehold.co/200x200/cbd5e1/334155?text=Somchai"
+                        }
+                    };
+                    await storageSetJSON(PROFILES_KEY, profiles);
+                }
+            } finally {
+                showGlobalLoading(false);
+            }
+        }
+
+        // Switch Auth Tabs (Login / Register)
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const authTitle = document.getElementById('auth-title');
+            const authSubtitle = document.getElementById('auth-subtitle');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                tabLogin.className = "flex-1 py-2.5 text-sm font-semibold rounded-xl bg-white text-blue-600 shadow-sm transition";
+                tabRegister.className = "flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-800 transition";
+                authTitle.innerText = "เข้าสู่ระบบครู";
+                authSubtitle.innerText = "กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งาน";
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                tabRegister.className = "flex-1 py-2.5 text-sm font-semibold rounded-xl bg-white text-indigo-600 shadow-sm transition";
+                tabLogin.className = "flex-1 py-2.5 text-sm font-semibold rounded-xl text-slate-500 hover:text-slate-800 transition";
+                authTitle.innerText = "สมัครสมาชิกใหม่";
+                authSubtitle.innerText = "สร้างบัญชีผู้ใช้สำหรับครูโรงเรียนกุศลวิทยา";
+            }
+        }
+
+        // Handle Register
+        async function handleRegister(e) {
+            e.preventDefault();
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const btn = document.getElementById('register-submit-btn');
+
+            if (!username || !password) {
+                showAlert('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
+            }
+
+            // Validate username format
+            if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+                showAlert('แจ้งเตือน', 'ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข หรือ _ เท่านั้น ความยาว 3-20 ตัวอักษร');
+                return;
+            }
+
+            if (password.length < 6) {
+                showAlert('แจ้งเตือน', 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+                return;
+            }
+
+            if (username.toLowerCase() === 'admin') {
+                showAlert('แจ้งเตือน', 'ไม่สามารถใช้ชื่อผู้ใช้นี้ได้ กรุณาใช้ชื่ออื่น');
+                return;
+            }
+
+            setButtonLoading(btn, true, 'กำลังสมัคร...', 'สมัครสมาชิก');
+            try {
+                let accounts = await storageGetJSON(ACCOUNTS_KEY, {});
+                if (accounts[username]) {
+                    showAlert('แจ้งเตือน', 'ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น');
+                    return;
+                }
+
+                accounts[username] = password;
+                const savedAccounts = await storageSetJSON(ACCOUNTS_KEY, accounts);
+
+                let profiles = await storageGetJSON(PROFILES_KEY, {});
+                profiles[username] = {
+                    fullname: "", age: "", height: "", weight: "",
+                    education: "", school: "", position: "", subjects: "", photo: ""
+                };
+                const savedProfiles = await storageSetJSON(PROFILES_KEY, profiles);
+
+                if (!savedAccounts || !savedProfiles) {
+                    showAlert('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+                    return;
+                }
+
+                showAlert('สำเร็จ', 'สมัครสมาชิกเรียบร้อยแล้ว! กรุณาเข้าสู่ระบบ', () => {
+                    document.getElementById('reg-username').value = '';
+                    document.getElementById('reg-password').value = '';
+                    switchAuthTab('login');
+                    document.getElementById('login-username').value = username;
+                });
+            } finally {
+                setButtonLoading(btn, false, '', 'สมัครสมาชิก');
+            }
+        }
+
+        // Handle Login
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const btn = document.getElementById('login-submit-btn');
+
+            setButtonLoading(btn, true, 'กำลังเข้าสู่ระบบ...', 'เข้าสู่ระบบ');
+            try {
+                const accounts = await storageGetJSON(ACCOUNTS_KEY, {});
+
+                if (!accounts[username] || accounts[username] !== password) {
+                    showAlert('เข้าสู่ระบบไม่สำเร็จ', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                    return;
+                }
+
+                currentUser = username;
+
+                if (username === 'admin') {
+                    isAdmin = true;
+                    await loadAdminDashboard();
+                } else {
+                    isAdmin = false;
+                    await loadTeacherDashboard(username);
+                }
+
+                updateNavActions();
+            } finally {
+                setButtonLoading(btn, false, '', 'เข้าสู่ระบบ');
+            }
+        }
+
+        // Update Navigation Bar Buttons
+        function updateNavActions() {
+            const navActions = document.getElementById('nav-actions');
+            if (currentUser) {
+                navActions.innerHTML = `
+                    <button onclick="openPublicDirectoryModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span>ทำเนียบครู</span>
+                    </button>
+                    <div class="text-right mr-2 hidden sm:block">
+                        <p class="text-xs text-blue-200">เข้าสู่ระบบโดย</p>
+                        <p class="text-sm font-bold">${isAdmin ? 'ผู้ดูแลระบบ (Admin)' : escapeHtml(currentUser)}</p>
+                    </div>
+                    <button onclick="logout()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow transition">ออกจากระบบ</button>
+                `;
+            } else {
+                navActions.innerHTML = `
+                    <button onclick="openPublicDirectoryModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span>ทำเนียบครู</span>
+                    </button>
+                    <button onclick="openAdminLoginModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        <span>แอดมิน</span>
+                    </button>
+                `;
+            }
+        }
+
+        // Public Directory feature
+        function openPublicDirectoryModal() {
+            const modal = document.getElementById('public-directory-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            renderPublicDirectoryTable();
+        }
+
+        function closePublicDirectoryModal() {
+            const modal = document.getElementById('public-directory-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        // Returns sanitized public data
+        async function getPublicSharedTeachersData() {
+            const profiles = await storageGetJSON(PROFILES_KEY, {});
+            let publicList = [];
+
+            for (let username in profiles) {
+                if (username === 'admin') continue;
+                let p = profiles[username];
+                // Only share safe public info: fullname, position, subjects, school
+                // (No private weight, age, height, or login credentials)
+                publicList.push({
+                    id: username,
+                    fullname: p.fullname || "ไม่ระบุชื่อ",
+                    position: p.position || "-",
+                    subjects: p.subjects || "-",
+                    school: p.school || "โรงเรียนกุศลวิทยา"
+                });
+            }
+            return publicList;
+        }
+
+        async function renderPublicDirectoryTable() {
+            let tbody = document.getElementById('public-directory-tbody');
+            tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">กำลังโหลด...</td></tr>`;
+
+            const data = await getPublicSharedTeachersData();
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">ยังไม่มีข้อมูลในระบบ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 font-bold text-slate-900">${escapeHtml(item.fullname)}</td>
+                    <td class="p-3 text-slate-700">${escapeHtml(item.position)}</td>
+                    <td class="p-3 text-blue-600 font-medium">${escapeHtml(item.subjects)}</td>
+                    <td class="p-3 text-slate-600 text-xs">${escapeHtml(item.school)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function copyApiEndpointCode() {
+            const data = await getPublicSharedTeachersData();
+            const jsonString = JSON.stringify(data, null, 2);
+
+            try {
+                await navigator.clipboard.writeText(jsonString);
+            } catch (e) {
+                // Fallback for environments without Clipboard API access
+                const dummy = document.createElement("textarea");
+                dummy.value = jsonString;
+                document.body.appendChild(dummy);
+                dummy.select();
+                document.execCommand("copy");
+                document.body.removeChild(dummy);
+            }
+
+            showAlert('คัดลอกสำเร็จ', 'คัดลอกข้อมูล JSON เรียบร้อยแล้ว ระบบอื่นสามารถนำข้อมูลนี้ไปใช้งานต่อได้อย่างปลอดภัย');
+        }
+
+        // Admin Direct Login Modal Controls
+        function openAdminLoginModal() {
+            const modal = document.getElementById('admin-login-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('admin-pin-input').value = '';
+        }
+
+        function closeAdminLoginModal() {
+            const modal = document.getElementById('admin-login-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        async function handleAdminDirectLogin(e) {
+            e.preventDefault();
+            const pin = document.getElementById('admin-pin-input').value.trim();
+            const btn = document.getElementById('admin-login-submit-btn');
+
+            setButtonLoading(btn, true, 'กำลังตรวจสอบ...', 'เข้าสู่ระบบ');
+            try {
+                // Check against the actual stored admin password, not a hardcoded value,
+                // so this stays in sync with the account record.
+                const accounts = await storageGetJSON(ACCOUNTS_KEY, {});
+                if (accounts['admin'] && pin === accounts['admin']) {
+                    currentUser = "admin";
+                    isAdmin = true;
+                    closeAdminLoginModal();
+                    await loadAdminDashboard();
+                    updateNavActions();
+                } else {
+                    showAlert('รหัสผ่านไม่ถูกต้อง', 'รหัสผ่านแอดมินไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                }
+            } finally {
+                setButtonLoading(btn, false, '', 'เข้าสู่ระบบ');
+            }
+        }
+
+        // Logout
+        function logout() {
+            currentUser = null;
+            isAdmin = false;
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('teacher-view').classList.add('hidden');
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            updateNavActions();
+        }
+
+        // Load Teacher Dashboard
+        async function loadTeacherDashboard(username) {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('teacher-view').classList.remove('hidden');
+
+            const profiles = await storageGetJSON(PROFILES_KEY, {});
+            let profile = profiles[username] || {};
+
+            document.getElementById('greeting-name').innerText = `ยินดีต้อนรับ คุณครู${profile.fullname || username}`;
+            document.getElementById('t-fullname').value = profile.fullname || '';
+            document.getElementById('t-age').value = profile.age || '';
+            document.getElementById('t-height').value = profile.height || '';
+            document.getElementById('t-weight').value = profile.weight || '';
+            document.getElementById('t-education').value = profile.education || '';
+            document.getElementById('t-school').value = profile.school || '';
+            document.getElementById('t-position').value = profile.position || '';
+            document.getElementById('t-subjects').value = profile.subjects || '';
+
+            const previewImg = document.getElementById('profile-preview');
+            previewImg.src = profile.photo || `https://placehold.co/200x200/cbd5e1/334155?text=${encodeURIComponent(username)}`;
+        }
+
+        // Handle Image Upload (Profile Photo)
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+            if (file.size > MAX_SIZE) {
+                showAlert('ไฟล์ใหญ่เกินไป', 'กรุณาเลือกรูปภาพขนาดไม่เกิน 2MB');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(uploadEvent) {
+                const base64Image = uploadEvent.target.result;
+                document.getElementById('profile-preview').src = base64Image;
+
+                const profiles = await storageGetJSON(PROFILES_KEY, {});
+                if (profiles[currentUser]) {
+                    profiles[currentUser].photo = base64Image;
+                    const ok = await storageSetJSON(PROFILES_KEY, profiles);
+                    if (!ok) {
+                        showAlert('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่อีกครั้ง');
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Save Teacher Profile
+        async function saveTeacherProfile() {
+            const btn = document.getElementById('save-profile-btn');
+            setButtonLoading(btn, true, 'กำลังบันทึก...', 'บันทึกข้อมูลทั้งหมด');
+            try {
+                const profiles = await storageGetJSON(PROFILES_KEY, {});
+                if (!profiles[currentUser]) {
+                    profiles[currentUser] = {};
+                }
+
+                profiles[currentUser].fullname = document.getElementById('t-fullname').value.trim();
+                profiles[currentUser].age = document.getElementById('t-age').value.trim();
+                profiles[currentUser].height = document.getElementById('t-height').value.trim();
+                profiles[currentUser].weight = document.getElementById('t-weight').value.trim();
+                profiles[currentUser].education = document.getElementById('t-education').value.trim();
+                profiles[currentUser].school = document.getElementById('t-school').value.trim();
+                profiles[currentUser].position = document.getElementById('t-position').value.trim();
+                profiles[currentUser].subjects = document.getElementById('t-subjects').value.trim();
+
+                const ok = await storageSetJSON(PROFILES_KEY, profiles);
+                if (ok) {
+                    showAlert('สำเร็จ', 'บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว');
+                } else {
+                    showAlert('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+                }
+            } finally {
+                setButtonLoading(btn, false, '', 'บันทึกข้อมูลทั้งหมด');
+            }
+        }
+
+        // Load Admin Dashboard
+        async function loadAdminDashboard() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('teacher-view').classList.add('hidden');
+            document.getElementById('admin-view').classList.remove('hidden');
+
+            await renderAdminTeachersTable();
+        }
+
+        // Render Admin Teachers Table
+        async function renderAdminTeachersTable() {
+            let tbody = document.getElementById('admin-teachers-list');
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">กำลังโหลด...</td></tr>`;
+
+            const profiles = await storageGetJSON(PROFILES_KEY, {});
+            let teacherKeys = Object.keys(profiles).filter(k => k !== 'admin');
+            document.getElementById('admin-teacher-count').innerText = teacherKeys.length;
+
+            if (teacherKeys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">ยังไม่มีข้อมูลคุณครูในระบบ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = teacherKeys.map(username => {
+                const p = profiles[username];
+                const photo = p.photo || `https://placehold.co/100x100/cbd5e1/334155?text=${encodeURIComponent(username)}`;
+                const fullnameHtml = p.fullname
+                    ? escapeHtml(p.fullname)
+                    : '<span class="text-slate-400 italic">ยังไม่กรอกชื่อ</span>';
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3.5 flex items-center space-x-3">
+                            <img src="${escapeHtml(photo)}" class="w-10 h-10 rounded-full object-cover border border-slate-200">
+                            <div>
+                                <p class="font-bold text-slate-900">${fullnameHtml}</p>
+                                <p class="text-xs text-slate-400 font-mono">ID: ${escapeHtml(username)}</p>
+                            </div>
+                        </td>
+                        <td class="p-3.5">
+                            <p class="font-medium text-slate-700">${escapeHtml(p.position || '-')}</p>
+                            <p class="text-xs text-slate-500">วิชา: ${escapeHtml(p.subjects || '-')}</p>
+                        </td>
+                        <td class="p-3.5 text-slate-600">${escapeHtml(p.school || '-')}</td>
+                        <td class="p-3.5 text-slate-600 text-xs">${escapeHtml(p.education || '-')}</td>
+                        <td class="p-3.5 text-right space-x-2">
+                            <button onclick="openAdminEditModal('${escapeHtml(username)}')" class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition">แก้ไข</button>
+                            <button onclick="deleteTeacher('${escapeHtml(username)}')" class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-semibold transition">ลบ</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Open Admin Edit Modal
+        async function openAdminEditModal(username) {
+            const profiles = await storageGetJSON(PROFILES_KEY, {});
+            let p = profiles[username] || {};
+
+            document.getElementById('edit-target-username').value = username;
+            document.getElementById('edit-modal-username').innerText = username;
+            document.getElementById('adm-fullname').value = p.fullname || '';
+            document.getElementById('adm-age').value = p.age || '';
+            document.getElementById('adm-height').value = p.height || '';
+            document.getElementById('adm-weight').value = p.weight || '';
+            document.getElementById('adm-education').value = p.education || '';
+            document.getElementById('adm-school').value = p.school || '';
+            document.getElementById('adm-position').value = p.position || '';
+            document.getElementById('adm-subjects').value = p.subjects || '';
+
+            const modal = document.getElementById('admin-edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeAdminEditModal() {
+            const modal = document.getElementById('admin-edit-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        // Save Admin Edited Profile
+        async function saveAdminEditedProfile() {
+            const username = document.getElementById('edit-target-username').value;
+            const btn = document.getElementById('admin-save-edit-btn');
+
+            setButtonLoading(btn, true, 'กำลังบันทึก...', 'บันทึกการแก้ไข');
+            try {
+                const profiles = await storageGetJSON(PROFILES_KEY, {});
+
+                if (profiles[username]) {
+                    profiles[username].fullname = document.getElementById('adm-fullname').value.trim();
+                    profiles[username].age = document.getElementById('adm-age').value.trim();
+                    profiles[username].height = document.getElementById('adm-height').value.trim();
+                    profiles[username].weight = document.getElementById('adm-weight').value.trim();
+                    profiles[username].education = document.getElementById('adm-education').value.trim();
+                    profiles[username].school = document.getElementById('adm-school').value.trim();
+                    profiles[username].position = document.getElementById('adm-position').value.trim();
+                    profiles[username].subjects = document.getElementById('adm-subjects').value.trim();
+
+                    const ok = await storageSetJSON(PROFILES_KEY, profiles);
+                    if (ok) {
+                        closeAdminEditModal();
+                        showAlert('สำเร็จ', 'แอดมินบันทึกข้อมูลเรียบร้อยแล้ว');
+                        await renderAdminTeachersTable();
+                    } else {
+                        showAlert('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+                    }
+                }
+            } finally {
+                setButtonLoading(btn, false, '', 'บันทึกการแก้ไข');
+            }
+        }
+
+        // Delete Teacher Account
+        function deleteTeacher(username) {
+            showConfirm('ยืนยันการลบ', `คุณต้องการลบบัญชีและข้อมูลของครู (${username}) หรือไม่?`, async () => {
+                showGlobalLoading(true);
+                try {
+                    const accounts = await storageGetJSON(ACCOUNTS_KEY, {});
+                    const profiles = await storageGetJSON(PROFILES_KEY, {});
+
+                    delete accounts[username];
+                    delete profiles[username];
+
+                    await storageSetJSON(ACCOUNTS_KEY, accounts);
+                    await storageSetJSON(PROFILES_KEY, profiles);
+
+                    showAlert('สำเร็จ', 'ลบข้อมูลเรียบร้อยแล้ว');
+                    await renderAdminTeachersTable();
+                } finally {
+                    showGlobalLoading(false);
+                }
+            });
+        }
+
+        // Run on load
+        window.onload = function() {
+            initDB();
+        };
+    </script>
+
+</body>
+</html>
